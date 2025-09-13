@@ -579,7 +579,7 @@ class FPL:
             raise Exception("User must be logged in.")
 
         url = API_URLS["league_classic"].format(league_id)
-        league = await fetch(self.session, url)
+        league = await fetch(self.session, url, access_token=self.access_token)
 
         if return_json:
             return league
