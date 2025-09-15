@@ -620,6 +620,12 @@ class FPL:
         return base64.urlsafe_b64encode(digest).decode().rstrip("=")
 
     async def login_v2(self, email: str, password: str):
+        if not email and not password:
+            email = os.getenv("FPL_EMAIL", None)
+            password = os.getenv("FPL_PASSWORD", None)
+        if not email or not password:
+            raise ValueError("Email and password must be set")
+
         code_verifier = self._generate_code_verifier()  # code_verifier for PKCE
         code_challenge = self._generate_code_challenge(
             code_verifier

@@ -128,8 +128,11 @@ class User():
         Amos Bastian - Netherlands
     """
 
-    def __init__(self, user_information, session):
+    def __init__(self, user_information, session, fpl=None):
         self._session = session
+        self.access_token = None
+        if fpl:
+            self.access_token = fpl.access_token
         for k, v in user_information.items():
             setattr(self, k, v)
 
@@ -217,7 +220,7 @@ class User():
         else:
             tasks = [asyncio.ensure_future(
                      fetch(self._session,
-                           API_URLS["user_picks"].format(self.id, gameweek)))
+                           API_URLS["user_picks"].format(self.id, gameweek), access_token=self.access_token))
                      for gameweek in range(self.started_event,
                                            self.current_event + 1)]
             picks = await asyncio.gather(*tasks)
@@ -227,16 +230,18 @@ class User():
             valid_gameweek(gameweek)
             try:
                 pick = next(pick for pick in picks
-                            if pick["entry_history"]["event"] == gameweek)
+                            if pick.get("entry_history",{}).get("event", -1) == gameweek)
             except StopIteration:
                 return {}
             else:
-                return {pick["entry_history"]["event"]: pick["picks"]}
+                process = {pick.get("entry_history",{}).get("event", -1): pick["picks"]}
+
+                return process
 
         picks_out = {}
         for pick in picks:
             try:
-                picks_out[pick["entry_history"]["event"]] = pick["picks"]
+                picks_out[pick.get("entry_history",{}).get("event", -1)] = pick["picks"]
             except KeyError:
                 pass
         return picks_out
@@ -325,7 +330,7 @@ class User():
         else:
             tasks = [asyncio.ensure_future(
                      fetch(self._session,
-                           API_URLS["user_picks"].format(self.id, gameweek)))
+                           API_URLS["user_picks"].format(self.id, gameweek), access_token=self.access_token))
                      for gameweek in range(1, self.current_event + 1)]
             picks = await asyncio.gather(*tasks)
             self._picks = picks
@@ -334,11 +339,11 @@ class User():
             valid_gameweek(gameweek)
             try:
                 return next(pick["automatic_subs"] for pick in picks
-                            if pick["entry_history"]["event"] == gameweek)
+                            if pick.get("entry_history",{}).get("event", -1) == gameweek)
             except StopIteration:
                 return None
 
-        return [p for pick in picks for p in pick["automatic_subs"]]
+        return [p for pick in picks for p in pick.get("automatic_subs", [])]
 
     async def get_user_history(self, gameweek=None):
         """Returns a list containing the user's history for each gameweek,
@@ -351,7 +356,7 @@ class User():
         else:
             tasks = [asyncio.ensure_future(
                      fetch(self._session,
-                           API_URLS["user_picks"].format(self.id, gameweek)))
+                           API_URLS["user_picks"].format(self.id, gameweek), access_token=self.access_token))
                      for gameweek in range(self.started_event, 
                                            self.current_event + 1)]
             picks = await asyncio.gather(*tasks)
@@ -360,12 +365,23 @@ class User():
         if gameweek is not None:
             valid_gameweek(gameweek)
             try:
-                return next(pick["entry_history"] for pick in picks
-                            if pick["entry_history"]["event"] == gameweek)
+                for pick in picks:
+                    entry_history = pick.get("entry_history")
+                    if entry_history and entry_history.get("event") == gameweek:
+                        return entry_history
+                # return next(pick["entry_history"] for pick in picks
+                #             if pick["entry_history"]["event"] == gameweek)
             except StopIteration:
                 return None
 
-        return [history["entry_history"] for history in picks]
+        val = []
+        for history in picks:
+            h = history.get("entry_history", None)
+            if h:
+                val.append(h)
+        return h
+
+
 
     async def get_team(self):
         """Returns a logged in user's current team. Requires the user to have
