@@ -365,12 +365,10 @@ class User():
         if gameweek is not None:
             valid_gameweek(gameweek)
             try:
-                for pick in picks:
-                    entry_history = pick.get("entry_history")
-                    if entry_history and entry_history.get("event") == gameweek:
-                        return entry_history
-                # return next(pick["entry_history"] for pick in picks
-                #             if pick["entry_history"]["event"] == gameweek)
+                return next(pick["entry_history"] for pick in picks
+                            if pick["entry_history"]["event"] == gameweek)
+                # return next(pick.get("entry_history",{}) for pick in picks
+                #             if pick.get("entry_history",{}).get("event", -1) == gameweek)
             except StopIteration:
                 return None
 

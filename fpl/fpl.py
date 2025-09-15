@@ -105,7 +105,7 @@ class FPL:
 
         if return_json:
             return user
-        return User(user, session=self.session)
+        return User(user, session=self.session, fpl=self)
 
     async def get_teams(self, team_ids=None, return_json=False):
         """Returns either a list of *all* teams, or a list of teams with IDs in
